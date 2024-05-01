@@ -1,61 +1,33 @@
-const net = require('net');
-const { promisify } = require('util');
-const { resolveMx } = require('dns').promises;
-const nodemailer = require('nodemailer');
-
-// Function to perform SMTP handshake and verify email
 async function verifyEmail(email) {
-    // Extract domain from email
     const domain = email.split('@')[1];
 
     try {
-        // Resolve the MX records for the recipient domain
-        const mxRecords = await resolveMx(domain);
-        const mxHostname = mxRecords[0].exchange;
+        const mxRecordsResponse = await fetch(`https://dns.google/resolve?name=${domain}&type=MX`);
+        const mxRecordsData = await mxRecordsResponse.json();
+        const mxRecords = mxRecordsData.Answer;
+        const mxHostname = mxRecords[0].data;
 
-        // Connect to the SMTP server
-        const client = net.createConnection({ port: 25, host: mxHostname });
-
-        client.setEncoding('utf8');
-
-        client.on('connect', () => {
-            console.log('Connected to SMTP server');
+        const response = await fetch(`https://${mxHostname}:25`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain',
+            },
+            body: `EHLO example.com\r\nMAIL FROM: <me@example.com>\r\nRCPT TO: <${email}>\r\n`,
         });
 
-        client.on('data', async (data) => {
-            console.log(data);
+        const responseData = await response.text();
+        console.log(responseData);
 
-            if (data.startsWith('220')) {
-                // Server is ready, send EHLO command
-                client.write(`EHLO mydomain.com\r\n`);
-            } else if (data.startsWith('250')) {
-                // EHLO response received, send MAIL FROM
-                client.write(`MAIL FROM: <me@mydomain.com>\r\n`);
-            } else if (data.startsWith('250')) {
-                // MAIL FROM response received, send RCPT TO
-                client.write(`RCPT TO: <${email}>\r\n`);
-            } else if (data.startsWith('250')) {
-                // RCPT TO response received, email is valid
-                console.log(`Email ${email} exists`);
-                client.end();
-            } else {
-                console.log('Unexpected response from server');
-                client.end();
-            }
-        });
-
-        client.on('end', () => {
-            console.log('Disconnected from SMTP server');
-        });
-
-        client.on('error', (err) => {
-            console.error('Error:', err);
-        });
+        if (responseData.includes('250')) {
+            console.log(`Email ${email} exists`);
+        } else {
+            console.log(`Email ${email} does not exist`);
+        }
     } catch (err) {
-        console.error('Error resolving MX records:', err);
+        console.error('Error:', err);
     }
 }
 
 // Example usage
-const emailToVerify = 'aaron@automote.io';
+const emailToVerify = 'aaron@example.com';
 verifyEmail(emailToVerify);
