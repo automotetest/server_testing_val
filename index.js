@@ -24,7 +24,7 @@ async function verifyEmail(email) {
             console.log(`Email ${email} does not exist`);
         }
     } catch (err) {
-        console.error('Error:', err);
+        //console.error('Error:', err);
     }
 }
 
