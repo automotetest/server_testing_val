@@ -7,7 +7,7 @@ async function verifyEmail(email) {
         const mxRecords = mxRecordsData.Answer;
         const mxHostname = mxRecords[0].data;
 
-        const response = await fetch(`https://${mxHostname}:300`, {
+        const response = await fetch(`https://${mxHostname}:25`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'text/plain',
